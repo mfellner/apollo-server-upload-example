@@ -55,29 +55,33 @@ async function createServer() {
     },
   });
 
+  const graphqlPath = '/graphql';
+
   const apollo = new ApolloServer({
+    path: graphqlPath,
     typeDefs,
     resolvers,
   });
 
-  console.log('apollo.uploadsConfig', apollo.uploadsConfig);
+  await server.ext({
+    type: 'onRequest',
+    method: async function(req, h) {
+      if (
+        req.path === graphqlPath &&
+        req.method === 'post' &&
+        req.raw.req.headers['content-type'].indexOf('multipart/form-data') !==
+          -1
+      ) {
+        req.mime = 'multipart/form-data';
+      }
+      return h.continue;
+    },
+  });
 
   await apollo.applyMiddleware({
     app: server,
     route: {
       cors: true,
-      ext: {
-        /**
-         * This handler will be called before the Apollo GraphQL handler.
-         * By calling getCombinedSchema we ensure that the GraphQL schema is up-to-date.
-         */
-        onPreHandler: {
-          method: async (req, h) => {
-            console.log('onPre', req.mime);
-            return h.continue;
-          },
-        },
-      },
     },
   });
 
