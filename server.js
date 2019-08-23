@@ -1,10 +1,12 @@
 const { Server } = require('@hapi/hapi');
 const Vision = require('@hapi/vision');
 const { ApolloServer } = require('apollo-server-hapi');
+const { processFileUploads } = require('apollo-server-core');
 const Handlebars = require('handlebars');
 const path = require('path');
 const WebpackPlugin = require('./webpack-plugin');
-const { typeDefs, resolvers } = require('./graphql');
+const { schema } = require('./graphql');
+const webpackConfig = require('./webpack.config');
 
 async function createServer() {
   const server = new Server({
@@ -19,60 +21,37 @@ async function createServer() {
     options: {
       publicPath: '/static',
       logLevel: 'warn',
-      config: {
-        mode: 'development',
-        entry: path.resolve(__dirname, 'frontend', 'index.js'),
-        module: {
-          rules: [
-            {
-              test: /\.jsx?$/,
-              exclude: /\/node_modules\//,
-              use: [
-                {
-                  loader: 'babel-loader',
-                  options: {
-                    babelrc: false,
-                    cacheDirectory: false,
-                    presets: [
-                      [
-                        '@babel/preset-env',
-                        {
-                          targets: {
-                            browsers: ['> 5% in alt-EU'],
-                          },
-                          modules: false,
-                        },
-                      ],
-                      '@babel/preset-react',
-                    ],
-                  },
-                },
-              ],
-            },
-          ],
-        },
-      },
+      config: webpackConfig,
     },
   });
 
   const graphqlPath = '/graphql';
 
+  /**
+   * Hapi 17 multipart not working
+   * https://github.com/apollographql/apollo-server/issues/2598
+   *
+   * Payload Parsing is not disabled using parse: false
+   * https://github.com/hapijs/hapi/issues/3465
+   */
+
   const apollo = new ApolloServer({
     path: graphqlPath,
-    typeDefs,
-    resolvers,
+    schema,
   });
+  apollo.uploadsConfig = null;
 
   await server.ext({
     type: 'onRequest',
-    method: async function(req, h) {
+    method: async (req, h) => {
       if (
         req.path === graphqlPath &&
         req.method === 'post' &&
-        req.raw.req.headers['content-type'].indexOf('multipart/form-data') !==
-          -1
+        (req.raw.req.headers['content-type'] || '').includes('multipart/form-data')
       ) {
-        req.mime = 'multipart/form-data';
+        req.route.settings.payload.parse = false;
+        req.route.settings.payload.output = 'stream';
+        req.pre.payload = await processFileUploads(req.raw.req, req.raw.res);
       }
       return h.continue;
     },
@@ -82,6 +61,16 @@ async function createServer() {
     app: server,
     route: {
       cors: true,
+      ext: {
+        onPreHandler: {
+          method: async (req, h) => {
+            if (req.pre.payload) {
+              req.payload = req.pre.payload;
+            }
+            return h.continue;
+          },
+        },
+      },
     },
   });
 

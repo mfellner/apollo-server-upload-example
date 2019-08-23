@@ -1,10 +1,10 @@
 const gql = require('graphql-tag');
-// const { makeExecutableSchema } = require('graphql-tools');
+const { makeExecutableSchema } = require('graphql-tools');
 
 const typeDefs = gql`
   # Enable file uploads:
   # https://www.apollographql.com/docs/apollo-server/features/file-uploads/
-  # scalar Upload
+  scalar Upload
 
   type File {
     filename: String!
@@ -29,22 +29,10 @@ const resolvers = {
   },
   Mutation: {
     uploadFile: async (root, { file }, context) => {
-      console.log(file);
-      const result = await file;
-      console.log(
-        'args:',
-        typeof file,
-        Object.keys(file),
-        typeof result,
-        Object.keys(result),
-      );
-      console.log(result);
-      return result;
+      const { filename, mimetype, encoding, createReadStream } = await file;
+      return { filename, mimetype, encoding };
     },
   },
 };
 
-exports.typeDefs = typeDefs;
-exports.resolvers = resolvers;
-
-// exports.schema = makeExecutableSchema({ typeDefs, resolvers });
+exports.schema = makeExecutableSchema({ typeDefs, resolvers });
