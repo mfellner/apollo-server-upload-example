@@ -1,28 +1,12 @@
 const { Server } = require('@hapi/hapi');
-const Vision = require('@hapi/vision');
 const { ApolloServer } = require('apollo-server-hapi');
 const { processFileUploads } = require('apollo-server-core');
-const Handlebars = require('handlebars');
-const path = require('path');
-const WebpackPlugin = require('./webpack-plugin');
 const { schema } = require('./graphql');
-const webpackConfig = require('./webpack.config');
 
 async function createServer() {
   const server = new Server({
     host: '0.0.0.0',
-    port: 3000,
-  });
-
-  await server.register(Vision);
-
-  await server.register({
-    plugin: WebpackPlugin,
-    options: {
-      publicPath: '/static',
-      logLevel: 'warn',
-      config: webpackConfig,
-    },
+    port: 4001,
   });
 
   const graphqlPath = '/graphql';
@@ -37,10 +21,14 @@ async function createServer() {
 
   const apollo = new ApolloServer({
     path: graphqlPath,
+    introspection: true,
+    playground: true,
+    // Disable automatic upload handling. We'll do it manually instead.
+    uploads: false,
     schema,
   });
-  apollo.uploadsConfig = null;
 
+  // Manually handle file uploads to work around Hapi issues:
   await server.ext({
     type: 'onRequest',
     method: async (req, h) => {
@@ -49,8 +37,10 @@ async function createServer() {
         req.method === 'post' &&
         (req.raw.req.headers['content-type'] || '').includes('multipart/form-data')
       ) {
+        // Prevent Hapi from trying to parse the request payload.
         req.route.settings.payload.parse = false;
         req.route.settings.payload.output = 'stream';
+        // Process the file upload and store it for the onPreHandler.
         req.pre.payload = await processFileUploads(req.raw.req, req.raw.res);
       }
       return h.continue;
@@ -74,20 +64,6 @@ async function createServer() {
     },
   });
 
-  server.views({
-    engines: { html: Handlebars },
-    relativeTo: path.resolve(__dirname, 'frontend'),
-    path: 'templates',
-  });
-
-  server.route({
-    method: 'GET',
-    path: '/',
-    handler: (req, h) => {
-      return h.view('index', {});
-    },
-  });
-
   return server;
 }
 
@@ -95,7 +71,7 @@ async function main() {
   const server = await createServer();
 
   await server.start();
-  console.log('🚀 Server ready at http://localhost:3000');
+  console.log('🚀 Server ready at http://localhost:4001');
 }
 
 main().catch(err => {

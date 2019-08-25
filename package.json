@@ -2,10 +2,18 @@
   "name": "apollo-server-upload-example",
   "license": "MIT",
   "main": "server.js",
+  "author": {
+    "name": "Maximilian Fellner",
+    "email": "max.fellner@gmail.com",
+    "url": "https://maximilianfellner.eu"
+  },
   "scripts": {
-    "start": "nodemon server.js localhost 4000"
+    "start": "nodemon frontend-server/server.js",
+    "start:backend": "nodemon backend-server/server.js"
   },
   "dependencies": {
+    "@apollo/federation": "0.9.0",
+    "@apollo/gateway": "0.10.0",
     "@apollo/react-hooks": "3.0.1",
     "@babel/core": "7.5.5",
     "@babel/preset-env": "7.5.5",
@@ -22,6 +30,7 @@
     "apollo-server-hapi": "2.9.0",
     "apollo-upload-client": "11.0.0",
     "babel-loader": "8.0.6",
+    "form-data": "2.5.0",
     "graphql": "14.5.0",
     "graphql-tag": "2.10.1",
     "graphql-tools": "4.0.5",
@@ -34,7 +43,5 @@
   "devDependencies": {
     "@types/graphql": "14.0.1",
     "nodemon": "1.18.4"
-  },
-  "keywords": [],
-  "description": ""
+  }
 }
