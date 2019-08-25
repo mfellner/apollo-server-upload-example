@@ -12,8 +12,11 @@ async function createServer() {
   const graphqlPath = '/graphql';
 
   /**
+   * Apollo federation and file upload not working:
+   * https://github.com/apollographql/apollo-server/issues/3033
+   * 
    * Hapi 17 multipart not working
-   * https://github.com/apollographql/apollo-server/issues/2598
+   * https://github.com/apollographql/apollo-server/issues/1680
    *
    * Payload Parsing is not disabled using parse: false
    * https://github.com/hapijs/hapi/issues/3465
